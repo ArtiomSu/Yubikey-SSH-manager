@@ -4,7 +4,7 @@ This is a collection of scripts and notes on how to manage SSH keys on a Yubikey
 
 Currently the script only uses the PIV application as this allows you to use more than 1 key in the case of FIDO2 (but if you only need 1 key you should use the FIDO2 method instead as it is way easier to set up and use i.e instructions you find online will actually work...). You can also use OpenPGP method but I couldn't get that working so its not included in this repo.
 
-So far I also was only able to get RSA4096 keys working. ED25519 keys don't work as they are not recognised by they yubico kcs11 module. I have left some notes on my attempts to get ED25519 keys working in the `manual_method.md` file. I was able to generate the public key just fine however the yubico kcs11 module along with ssh-keygen -D isn't able to read it. It takes around a minute to generate the RSA4096 private key which is very slow compared to ED25519 keys which are instant. But at least it works.
+So far I also was only able to get RSA4096 keys working. ED25519 keys don't work as they are not recognised by they yubico kcs11 module. I have left some notes on my attempts to get ED25519 keys working in the `manual_method_piv.md` file. I was able to generate the public key just fine however the yubico kcs11 module along with ssh-keygen -D isn't able to read it. It takes around a minute to generate the RSA4096 private key which is very slow compared to ED25519 keys which are instant. But at least it works.
 
 Using the `yubikey_ssh_manager.sh` script you can manage 20 ssh keys. And still be able to use the [macos login](https://support.yubico.com/hc/en-us/articles/360016649059-YubiKey-for-macOS-login) functionality, which also allows you to use the yubikey for `sudo`. 
 
