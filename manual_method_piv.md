@@ -1,4 +1,4 @@
-# Manual Method For Managing SSH Keys with YubiKey
+# Manual Method For Managing SSH Keys with YubiKey using PIV
 
 This guide provides a step-by-step method to manually manage SSH keys using a YubiKey. This is pretty much what the script does under the hood.
 
