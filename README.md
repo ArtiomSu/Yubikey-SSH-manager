@@ -1,135 +1,108 @@
-# Yubikey SSH manager
+# Yubikey SSH Manager
 
-This is a collection of scripts and notes on how to manage SSH keys on a Yubikey.
+A collection of scripts and documentation for managing SSH keys on YubiKeys using different methods.
 
-Currently the repository includes two main scripts:
+## Overview
 
-1. **PIV method** (`yubikey_ssh_manager_piv.sh`) - Uses the PIV application with RSA4096 keys
-2. **FIDO2 method** (`yubikey_ssh_manager_fido2.sh`) - Uses FIDO2 with ED25519-SK keys
+This repository provides two automated scripts for managing SSH keys on YubiKeys:
 
-You can also use OpenPGP method but I couldn't get that working so its not included in this repo.
+- **PIV Method** (`yubikey_ssh_manager_piv.sh`) - Uses PIV application with RSA4096 keys
+- **FIDO2 Method** (`yubikey_ssh_manager_fido2.sh`) - Uses FIDO2 with ED25519-SK keys
 
-So far with the PIV method I was only able to get RSA4096 keys working. ED25519 keys don't work as they are not recognised by they yubico kcs11 module. I have left some notes on my attempts to get ED25519 keys working in the `manual_method_piv.md` file. The PIV method takes around a minute to generate the RSA4096 private key which is very slow compared to FIDO2 ED25519-SK keys which are instant.
+## Method Comparison
 
-Using the `yubikey_ssh_manager_piv.sh` script you can manage 20 ssh keys. And still be able to use the [macos login](https://support.yubico.com/hc/en-us/articles/360016649059-YubiKey-for-macOS-login) functionality, which also allows you to use the yubikey for `sudo`. 
+Yubikey supports 3 main methods for SSH key storage: PIV, FIDO2, and OpenPGP.
 
-The FIDO2 method using `yubikey_ssh_manager_fido2.sh` allows you to generate up to 100 keys (though they share space with your normal web login credentials), uses fast ED25519-SK key generation, but has some platform limitations.
+OpenPGP support is still WIP and not included in this repo for now. I'll include it once I figure out a good way to use it. You can use it for git commit signing which is pretty cool. 
 
-The certs are fully stored on the yubikey so you don't need to store any ssh files on the computer (though FIDO2 method does create local key files that act as proxies). You only need to store the public keys on the server which can be exported from the yubikey at any point.
+| Feature | PIV | FIDO2 |
+|---------|-----|-------|
+| **Key Capacity** | 20 keys | 100 keys (shared with web logins) |
+| **Key Type** | RSA4096 | ED25519-SK |
+| **Generation Speed** | Slow (~1 minute) | Instant |
+| **macOS Support** | Yes | Yes |
+| **Linux x86_64 Support** | Yes | Yes |
+| **Linux ARM Support (PinePhone 64)** | Yes | Yes |
+| **Android Support** | No | Only in Termius |
+| **Setup Complexity** | Medium | Easy |
+| **Server Configuration** | None required | None required |
 
-You don't need any special configuration on the server side. Only on the client side you need to setup a few things to handle the yubikey.
+## Quick Start
 
-# Differences between PIV, FIDO2 and OpenPGP methods
+### Prerequisites
 
-| Feature                     | PIV                         | FIDO2                       | OpenPGP                    |
-|-----------------------------|-----------------------------|-----------------------------|----------------------------|
-| Number of keys              | 20                          | 100 (but is sharing normal web login)                         | N/A                        |
-| Working Key types			  | RSA4096			            | ED25519                     | N/A                        |
-| Key generation speed        | Slow (RSA4096 ~1min)        | Fast (ED25519 instant)      | N/A                        |
-| Works with android		  | No                          | Not really (only in termius)| N/A                        |
-| Works with macos            | Yes						    | Yes                         | N/A                        |	
-| Works with linux            | Yes						    | Yes                         | N/A                        |	
-| Works with windows          | N/A						    | N/A                         | N/A                        |	
-| Ease of use                 | Easiest in terms of commands and ssh config | Easiest in terms of setup only need to install 1 package | N/A                        |	
-| Easy to use script avaiable | Yes						    | Yes                         | No                         |	
+Make sure to change the default PIN, PUK, and management key on your YubiKey before using these scripts. This is easiest to do using the yubico authenticator app.
 
-Other notable differences are the PIV method stores the public and private keys directly on the yubikey. During the ssh authentication it tries every public key on the yubikey until it finds the right one making it the most portable option.
-
-The FIDO2 method does store the private and public keys on the yubikey but for it to work you need to run a quick command to download all of the keys to the new pc. It does download the private keys but they are more like proxies. The advantage of this is you can basically treat it as regular ssh keys, only difference is you need to enter your yubikey pin when using them.
-
-# Prerequisites
-
-## Macos
-
-Install the following packages
-
+**macOS:**
 ```bash
-brew install openssh # needed for ssh-keygen
-brew install yubico-authenticator # optional but handy
-brew install ykman # needed for managing the PIV ssh keys
-brew install yubico-piv-tool # needed for the PIV method
+brew install openssh ykman yubico-piv-tool
+brew install yubico-authenticator # optional
 ```
 
-optional packages that are no longer required or don't work with the current setup
-
+**Linux:**
 ```bash
-brew install opensc # not needed anymore
-brew install yubikey-agent # needed if you want to cache the ssh keys. otherwise you need to enter your pin every time doesn't work with the slots
+# Install required packages (example for Arch Linux)
+paru -S yubikey-manager yubico-piv-tool libfido2
+paru -S yubico-authenticator-bin # optional
+sudo systemctl start pcscd && sudo systemctl enable pcscd
 ```
 
-## Linux
+### Running the Scripts
+
+Make sure your YubiKey is plugged in, then run:
 
 ```bash
-paru -S yubico-authenticator-bin
-doas systemctl start pcscd && doas systemctl enable pcscd # needed for PIV tools to work 
-# paru -S pcsc-tools
-paru -S yubikey-manager # ykman for PIV method
-paru -S yubico-piv-tool # needed for the PIV method
-paru -S libfido2 # needed for the FIDO2 method
-```
-
-## Termux [WIP]
-currently struggling to access the yubikey
-
-```bash
-pkg install openssh
-pkg install opensc
-pkg install termux-api
-pkg install libpcsclite
-ln -s /data/data/com.termux/files/usr/lib/libpcsclite_real.so /data/data/com.termux/files/usr/lib/libpcsclite_real.so.1
-```
-
-# Running the scripts
-
-Make sure you have the prerequisites installed and your yubikey is plugged in.
-
-## PIV method
-```bash
+# PIV method (RSA4096 keys)
 ./yubikey_ssh_manager_piv.sh
-```
 
-## FIDO2 method
-```bash
+# FIDO2 method (ED25519-SK keys)
 ./yubikey_ssh_manager_fido2.sh
 ```
 
-# Stuff that doesn't work
+## Key Features
 
-Yubikeys ended up being kinda shit in some cases. Here are a few things that don't work.
+- **Fully hardware-stored keys** - Private keys never leave the YubiKey
+- **No server-side configuration** - Works with any SSH server
+- **Multiple key management** - Organize keys for different services
+- **Cross-platform support** - Works on macOS and Linux
+- **Compatible with macOS login** - PIV method works alongside system authentication (if you use the script). Here is a nice tutorial on [how to set it up](https://support.yubico.com/hc/en-us/articles/360016649059-YubiKey-for-macOS-login).
 
-## Caching the pin doesn't work using the ssh config like so
+## Documentation
 
-```config
-Host bitbucket.org
-	PKCS11Provider /opt/homebrew/lib/libykcs11.dylib
-	ControlMaster auto
-	ControlPath ~/.ssh/controlmasters/%r@%h:%p
-	ControlPersist 30m
+- [`manual_method_piv.md`](manual_method_piv.md) - Manual PIV key management and troubleshooting
+- [`manual_method_fido2.md`](manual_method_fido2.md) - Manual FIDO2 key management
+- [`troubleshooting.md`](troubleshooting.md) - Common issues and solutions
+
+## SSH Configuration
+
+Add this to your `~/.ssh/config` for each host you want to use with PIV keys:
+
+**macOS:**
+```ssh
+Host example.com
+    PKCS11Provider /opt/homebrew/lib/libykcs11.dylib
 ```
 
-```bash
-mkdir -p ~/.ssh/controlmasters
-chmod 700 ~/.ssh/controlmasters
+**Linux:**
+```ssh
+Host example.com
+    PKCS11Provider /usr/lib/libykcs11.so
 ```
 
-## Caching the pin using the yubikey-agent doesn't work either
+FIDO2 keys work like regular SSH keys and don't require special SSH configuration.
 
-it seems like it can't read the retired slots for some reason that we are using for ssh
+## Security Notes
 
-```bash
-yubikey-agent --setup
-yubikey-agent -l ~/.yubico/ssh-agent.sock
-```
+- PIV method allows up to 20 SSH keys while maintaining compatibility with macOS login and sudo authentication
+- FIDO2 keys share storage space with your web authentication credentials
+- Both methods require physical touch confirmation for key generation and usage
+- Keys are generated and stored entirely on the YubiKey hardware
 
-```config
-Host bitbucket.org
-	IdentityAgent ~/.yubico/ssh-agent.sock
-```
+## Limitations
 
-## After a reboot it is not going to work
+- **Windows support** - Currently not supported by these scripts
+- **OpenPGP method** - Not included due to compatibility issues
+- **Android support** - Very limited, FIDO2 only works with specific apps like Termius. PIV method is not supported. 
+- **Pin caching** - Not supported, you'll need to enter your PIN for each SSH operation
 
-You just need to run this once and then everything should work again 
-
-```bash
-ykman piv info
-```
+For detailed troubleshooting and workarounds, see [`troubleshooting.md`](troubleshooting.md).

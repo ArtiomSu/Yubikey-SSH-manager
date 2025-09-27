@@ -1,105 +1,190 @@
-# Manual Method For Managing SSH Keys with YubiKey using FIDO2
+# Manual FIDO2 Method for SSH Key Management
 
-You can sort of use FIDO2 with Android but so far I have only managed to get it to work with termius app using their proprietary generated keys. So you cant see them on the yubikey itself which makes it useless.
+This guide covers manual management of SSH keys using YubiKey's FIDO2 functionality. The `yubikey_ssh_manager_fido2.sh` script automates most of these processes.
 
-You can in theory generate 100 FIDO2 ssh keys, however they take up the same space as your normal google keys so its not great, but easier to setup than the PIV method.
+## Prerequisites
 
-# Prerequisites
-
-For linux you will need to install `libfido2`
-
-```bash
-paru -S libfido2
-```
-
-For macos you just need the latest openssh
-
+### macOS
 ```bash
 brew install openssh
+# Latest OpenSSH includes FIDO2 support
 ```
 
-# Generate your first FIDO2 key
-
+### Linux
 ```bash
-ssh-keygen -t ed25519-sk -O resident -O verify-required -C "Main SSH Key Primary"
+# Arch Linux example
+paru -S libfido2 openssh
 ```
 
-When it asks you where to save the key I entered `/home/$USER/.ssh/yubikey_primary_id_ed25519_sk`
-
-you will now have 2 new files in your .ssh folder
-
+### Verify FIDO2 Support
 ```bash
-yubikey_primary_id_ed25519_sk
-yubikey_primary_id_ed25519_sk.pub
+# Check OpenSSH version (should be 8.2+)
+ssh -V
+
+# Test FIDO2 token detection
+ssh-keygen -t ed25519-sk -O resident -f /tmp/test_key
+rm /tmp/test_key*  # Clean up test files
 ```
 
-# To create another key you can do the following
+## Key Generation
 
-you can add anything after `=ssh:` to create multiple keys. Here I just use 1. You can also do `ssh:bitbutcket` or anything else to help you identify the keys later.
-
+### Basic FIDO2 Key
 ```bash
-ssh-keygen -t ed25519-sk -O resident -O application=ssh:1 -C "Secondary SSH Key Primary"
+# Generate a resident key with touch verification
+ssh-keygen -t ed25519-sk -O resident -O verify-required -C "Main SSH Key" -f ~/.ssh/yubikey_main
 ```
 
-When it asks you where to save the key I entered `/home/$USER/.ssh/yubikey_primary_2_id_ed25519_sk`
+Options explained:
+- `-t ed25519-sk`: Use ED25519 with security key
+- `-O resident`: Store key on the YubiKey (allows recovery)
+- `-O verify-required`: Require touch for each authentication
+- `-C "comment"`: Add a comment to identify the key
+- `-f filename`: Specify output filename
 
-# Exporting keys from the Yubikey on a new pc
+### Multiple Keys with Application IDs
 
-Since the FIDO2 method outputs files you will need to regenerate these on a new pc.
-
-You can do it like this. This command will download all of the keys stored on the yubikey. Unfortunately the names are lost so you will need to rename them.
-
-And should probably keep track of the names somewhere.
-
-I recommed navigation into a new folder before running the command so you can easily organise them.
+Create separate keys for different services:
 
 ```bash
+# Default application (ssh:)
+ssh-keygen -t ed25519-sk -O resident -O verify-required -C "Primary SSH Key" -f ~/.ssh/yubikey_primary
+
+# GitHub key
+ssh-keygen -t ed25519-sk -O resident -O application=ssh:github -O verify-required -C "GitHub SSH Key" -f ~/.ssh/yubikey_github
+
+# Work server key
+ssh-keygen -t ed25519-sk -O resident -O application=ssh:work -O verify-required -C "Work SSH Key" -f ~/.ssh/yubikey_work
+
+# Personal server key
+ssh-keygen -t ed25519-sk -O resident -O application=ssh:personal -O verify-required -C "Personal SSH Key" -f ~/.ssh/yubikey_personal
+```
+
+## Key Recovery and Export
+
+### Export All Keys from YubiKey
+
+On a new computer, recover all resident keys:
+
+```bash
+# Create a directory for exported keys
+mkdir -p ~/.ssh/yubikey_keys
+cd ~/.ssh/yubikey_keys
+
+# Export all resident keys from YubiKey
 ssh-keygen -K
+
+# Keys will be saved as id_ed25519_sk_* files
+# Rename them to something more descriptive
+mv id_ed25519_sk_rk_github ~/.ssh/yubikey_github
+mv id_ed25519_sk_rk_github.pub ~/.ssh/yubikey_github.pub
 ```
-The public key files will have the `ssh:bitbucket` at the end of them so it should be easy to identify them.
 
-# Managing keys
+### Identify Keys by Application ID
 
-Its probably best to just use the yubico authenticator app. but you can do it from the command line too.
-
-To list all the keys stored on the yubikey you can do the following first get the device path like so
+The exported public keys contain the application ID in the comment:
 
 ```bash
-fido2-token -L 
+# Check public key contents to identify purpose
+cat ~/.ssh/yubikey_keys/*.pub
+
+# Look for application identifiers in the key comments
+grep -H "ssh:" ~/.ssh/yubikey_keys/*.pub
 ```
 
-Then list the keys
+## Key Management with fido2-token (Linux)
 
+### List FIDO2 Devices
 ```bash
-fido2-token -L /dev/hidrawX -r
+fido2-token -L
+# Output: /dev/hidraw0: vendor=0x1050, product=0x0407 (YubiKey)
 ```
 
-To get the count of keys used and remaining you can do
-
+### List Resident Credentials
 ```bash
-fido2-token -I -c /dev/hidrawX
+# Replace /dev/hidrawX with your device path
+fido2-token -L /dev/hidraw0 -r
+
+# Sample output:
+# ssh: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= eddsa uvopt+id
+# ssh:github: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB= eddsa uvopt+id
 ```
 
-
-To delete a specific key there are two steps. 
-
-First get the credential ID of the key you want to delete
-
+### Get Credential Count
 ```bash
-fido2-token -L /dev/hidrawX -k ssh:1
+fido2-token -I -c /dev/hidraw0
+# Output: remaining: 98, total: 100
 ```
 
-This will output a bunch of text that looks something like this
-```txt
-00: [CREDENTIAL_ID_HERE] openssh AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= eddsa uvopt+id
-```
+### Delete Specific Credentials
 
-Take the first part after the `00:` and then use that to delete the key like so
-
+First, get the credential ID:
 ```bash
-fido2-token -D -i [CREDENTIAL_ID_HERE] /dev/hidrawX
+fido2-token -L /dev/hidraw0 -k ssh:github
+# Output: 00: [CREDENTIAL_ID] openssh AAAA...= eddsa uvopt+id
 ```
 
+Then delete using the credential ID:
+```bash
+fido2-token -D -i [CREDENTIAL_ID] /dev/hidraw0
+```
+
+## SSH Configuration
+
+FIDO2 keys work like regular SSH keys. Add them to your SSH configuration:
+
+```ssh
+# ~/.ssh/config
+Host github.com
+    HostName github.com
+    User git
+    IdentityFile ~/.ssh/yubikey_github
+    IdentitiesOnly yes
+
+Host work-server
+    HostName work.example.com
+    User username
+    IdentityFile ~/.ssh/yubikey_work
+    IdentitiesOnly yes
+```
+
+Or add them to ssh-agent:
+```bash
+ssh-add ~/.ssh/yubikey_github
+ssh-add ~/.ssh/yubikey_work
+```
+
+## Platform Limitations
+
+### Android Support
+
+Android support is pretty bad. I could only get it working with the proprietary Termius app. However this uses its own key storage and not the YubiKey resident keys so its not possible to share keys between devices.
+
+### Windows Support
+
+Windows support is not covered by these scripts. I only use Windows for gaming and HDR content so not going to invest time in it. But feel free to submit a PR if you figure it out. 
+
+## Troubleshooting
+
+### Touch Not Working
+- Ensure YubiKey LED is steady (not blinking)
+- Try a longer, deliberate touch
+- Some YubiKey models require firmer pressure
+
+## Security Considerations
+
+### Key Storage
+- **Private keys**: Never leave the YubiKey hardware
+- **Public keys**: Standard SSH public keys, safe to copy anywhere
+- **Recovery**: Resident keys can be re-exported from YubiKey
+
+### Touch Requirements
+- **verify-required**: Requires touch for each authentication
+- **Touch confirmation**: Provides protection against malware
+
+### Application Isolation
+- Different application IDs create separate key slots
+- Keys are isolated from each other on the device
+- Maximum 100 resident credentials (shared with web authentication)
 
 
 
