@@ -6,7 +6,7 @@ Currently the script only uses the PIV application. You can also use OpenPGP met
 
 So far I also was only able to get RSA4096 keys working. ED25519 keys don't work as they are not recognised by they yubico kcs11 module. I have left some notes on my attempts to get ED25519 keys working in the `manual_method_piv.md` file. I was able to generate the public key just fine however the yubico kcs11 module along with ssh-keygen -D isn't able to read it. It takes around a minute to generate the RSA4096 private key which is very slow compared to ED25519 keys which are instant. But at least it works.
 
-Using the `yubikey_ssh_manager.sh` script you can manage 20 ssh keys. And still be able to use the [macos login](https://support.yubico.com/hc/en-us/articles/360016649059-YubiKey-for-macOS-login) functionality, which also allows you to use the yubikey for `sudo`. 
+Using the `yubikey_ssh_manager_piv.sh` script you can manage 20 ssh keys. And still be able to use the [macos login](https://support.yubico.com/hc/en-us/articles/360016649059-YubiKey-for-macOS-login) functionality, which also allows you to use the yubikey for `sudo`. 
 
 The certs are fully stored on the yubikey so you don't need to store any ssh files on the computer. You only need to store the public keys on the server which can be exported from the yubikey at any point.
 
@@ -76,7 +76,7 @@ ln -s /data/data/com.termux/files/usr/lib/libpcsclite_real.so /data/data/com.ter
 
 Make sure you have the prerequisites installed and your yubikey is plugged in.
 ```bash
-./yubikey_ssh_manager.sh
+./yubikey_ssh_manager_piv.sh
 ```
 
 # Stuff that doesn't work

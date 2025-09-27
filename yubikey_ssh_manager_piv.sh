@@ -142,7 +142,7 @@ check_prerequisites() {
 
 # Display main menu
 show_menu() {
-    clear
+    echo ""
     echo "=================================="
     echo "    YubiKey SSH Key Manager"
     echo "=================================="
@@ -400,7 +400,6 @@ main() {
         esac
         
         echo
-        read -p "Press Enter to continue..."
     done
 }
 
