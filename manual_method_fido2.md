@@ -35,7 +35,7 @@ yubikey_primary_id_ed25519_sk.pub
 
 # To create another key you can do the following
 
-you can add any number after `=ssh:` to create multiple keys. Here I just use 1.
+you can add anything after `=ssh:` to create multiple keys. Here I just use 1. You can also do `ssh:bitbutcket` or anything else to help you identify the keys later.
 
 ```bash
 ssh-keygen -t ed25519-sk -O resident -O application=ssh:1 -C "Secondary SSH Key Primary"
@@ -56,6 +56,7 @@ I recommed navigation into a new folder before running the command so you can ea
 ```bash
 ssh-keygen -K
 ```
+The public key files will have the `ssh:bitbucket` at the end of them so it should be easy to identify them.
 
 # Managing keys
 
