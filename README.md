@@ -89,6 +89,8 @@ Host example.com
     PKCS11Provider /usr/lib/libykcs11.so
 ```
 
+If you get Too many authentication failures from server see the corresponding section in `manual_method_piv.md` to fix it.
+
 FIDO2 keys work like regular SSH keys and don't require special SSH configuration.
 
 ## Security Notes

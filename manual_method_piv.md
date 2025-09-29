@@ -170,3 +170,34 @@ The PIV method is compatible with macOS login functionality when using slots 82-
 - Have both functionalities work simultaneously without conflicts
 
 To set up macOS login, follow [Yubico's official guide](https://support.yubico.com/hc/en-us/articles/360016649059-YubiKey-for-macOS-login).
+
+## Too many authentication failures from server
+
+If you get this, here is the fix. You need to save your public key to a file on the client, the same key that you use on the servers `authorized_keys` file.
+
+update the clients `~/.ssh/config` with the following:
+
+```config
+Host bitbucket.org
+	PKCS11Provider /opt/homebrew/lib/libykcs11.dylib
+	IdentityAgent none
+	IdentitiesOnly yes
+	IdentityFile /Users/$USER/.ssh/yubikey_primary_bitbucket.pub
+```
+
+And make sure the permissions of the public key file are correct:
+
+```bash
+chmod 0644 /Users/$USER/.ssh/yubikey_primary_bitbucket.pub
+```
+
+If you have multiple keys on the YubiKey, you can add more `IdentityFile` lines to the config file.
+
+```config
+Host bitbucket.org
+	PKCS11Provider /opt/homebrew/lib/libykcs11.dylib
+	IdentityAgent none
+	IdentitiesOnly yes
+	IdentityFile /Users/$USER/.ssh/yubikey_primary_bitbucket.pub
+	IdentityFile /Users/$USER/.ssh/yubikey_secondary_bitbucket.pub
+```
