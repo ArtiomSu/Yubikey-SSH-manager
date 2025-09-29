@@ -152,9 +152,10 @@ show_menu() {
     echo "4. Get all public keys"
     echo "5. Delete SSH key"
     echo "6. Show YubiKey PIV info"
-    echo "7. Exit"
+    echo "7. Export all public keys to files"
+    echo "8. Exit"
     echo "=================================="
-    echo -n "Please select an option [1-7]: "
+    echo -n "Please select an option [1-8]: "
 }
 
 # Create new SSH key
@@ -355,6 +356,95 @@ delete_ssh_key() {
     fi
 }
 
+# Export all public keys to individual files
+export_all_public_keys() {
+    echo
+    print_info "Scanning YubiKey for SSH keys on retired slots..."
+    
+    local found_keys=false
+    local piv_info
+    local exported_count=0
+    
+    # Get PIV info once and store it
+    piv_info=$(ykman piv info)
+    
+    # Check if any keys exist first
+    for slot in "${RETIRED_SLOTS[@]}"; do
+        if echo "$piv_info" | grep -q "Slot $slot" && ! echo "$piv_info" | grep "Slot $slot" | grep -q "Empty"; then
+            found_keys=true
+            break
+        fi
+    done
+    
+    if [[ "$found_keys" == false ]]; then
+        print_warning "No SSH keys found on retired slots"
+        return 0
+    fi
+    
+    echo
+    read -p "Enter file prefix (e.g., 'my_yubikey', 'work_keys'): " prefix
+    
+    if [[ -z "$prefix" ]]; then
+        print_error "Prefix cannot be empty"
+        return 1
+    fi
+    
+    # Sanitize prefix (remove special characters except underscore and dash)
+    prefix=$(echo "$prefix" | sed 's/[^a-zA-Z0-9_-]/_/g')
+    
+    echo
+    print_info "Exporting public keys with prefix '$prefix'..."
+    echo
+    
+    for slot in "${RETIRED_SLOTS[@]}"; do
+        if echo "$piv_info" | grep -q "Slot $slot" && ! echo "$piv_info" | grep "Slot $slot" | grep -q "Empty"; then
+            # Extract subject and clean it up
+            local subject_raw=$(echo "$piv_info" | grep "Slot $slot" -A 5 | grep "Subject DN:" | sed 's/.*Subject DN: *//')
+            local subject_clean=""
+            
+            # Extract CN value if present, otherwise use the whole subject
+            if [[ "$subject_raw" =~ CN=([^,]*) ]]; then
+                subject_clean="${BASH_REMATCH[1]}"
+            else
+                subject_clean="$subject_raw"
+            fi
+            
+            # Replace spaces with underscores and sanitize
+            subject_clean=$(echo "$subject_clean" | sed 's/ /_/g' | sed 's/[^a-zA-Z0-9_-]/_/g')
+            
+            print_info "Processing slot $slot: $subject_clean"
+
+            local key_index
+            key_index=$(slot_to_key_index "$slot")
+    
+            local public_key
+            local filename
+            public_key=$(ssh-keygen -D "$PKCS11_LIB" 2>/dev/null | grep "Retired Key $key_index")
+            if [[ -n "$public_key" ]]; then
+                if [[ -n "$subject_clean" ]]; then
+                    filename="${prefix}_slot_${slot}_${subject_clean}.pub"
+                else
+                    filename="${prefix}_slot_${slot}.pub"
+                fi
+                echo "$public_key" > "$filename"
+                chmod 0644 "$filename"
+                print_success "Exported slot $slot to $filename"
+                exported_count=$((exported_count + 1))
+            else
+                print_warning "Failed to extract public key for slot $slot"
+            fi
+        fi
+    done
+    
+    echo
+    if [[ $exported_count -gt 0 ]]; then
+        print_success "Successfully exported $exported_count public key(s)"
+        print_info "Files saved in current directory with prefix '$prefix'"
+    else
+        print_error "No public keys were exported"
+    fi
+}
+
 # Show YubiKey PIV info
 show_piv_info() {
     echo
@@ -391,11 +481,14 @@ main() {
                 show_piv_info
                 ;;
             7)
+                export_all_public_keys
+                ;;
+            8)
                 print_info "Goodbye!"
                 exit 0
                 ;;
             *)
-                print_error "Invalid option. Please select 1-7."
+                print_error "Invalid option. Please select 1-8."
                 ;;
         esac
         

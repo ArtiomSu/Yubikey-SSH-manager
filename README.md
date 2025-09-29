@@ -7,7 +7,26 @@ A collection of scripts and documentation for managing SSH keys on YubiKeys usin
 This repository provides two automated scripts for managing SSH keys on YubiKeys:
 
 - **PIV Method** (`yubikey_ssh_manager_piv.sh`) - Uses PIV application with RSA4096 keys
+
+```txt
+1. Create new SSH key
+2. List all SSH keys
+3. Get public key for specific slot
+4. Get all public keys
+5. Delete SSH key
+6. Show YubiKey PIV info
+7. Export all public keys to files
+```
+
 - **FIDO2 Method** (`yubikey_ssh_manager_fido2.sh`) - Uses FIDO2 with ED25519-SK keys
+
+```txt
+1. Create new SSH key
+2. List all SSH keys on YubiKey
+3. Export keys to current directory
+4. Delete SSH key
+5. Show YubiKey info
+```
 
 ## Method Comparison
 
