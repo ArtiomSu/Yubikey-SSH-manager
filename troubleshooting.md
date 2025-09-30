@@ -25,6 +25,8 @@ ykman piv info
 
 ### After Reboot Issues
 
+This so far has only been an issue with Macos sometimes.
+
 If your YubiKey stops working after a reboot, run this command once:
 
 ```bash
@@ -32,6 +34,8 @@ ykman piv info
 ```
 
 This reinitializes the PIV interface and should restore functionality.
+
+you can also run the `piv_startup.sh` script included in this repository to automate this process, the script also outputs all of the public keys so you can verify that everything is working.
 
 ## Known Limitations
 
