@@ -16,6 +16,7 @@ This repository provides two automated scripts for managing SSH keys on YubiKeys
 5. Delete SSH key
 6. Show YubiKey PIV info
 7. Export all public keys to files
+8. Populate SSH config
 ```
 
 - **FIDO2 Method** (`yubikey_ssh_manager_fido2.sh`) - Uses FIDO2 with ED25519-SK keys

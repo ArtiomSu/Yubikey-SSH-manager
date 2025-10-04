@@ -174,6 +174,7 @@ To set up macOS login, follow [Yubico's official guide](https://support.yubico.c
 ## Too many authentication failures from server
 
 If you get this, here is the fix. You need to save your public key to a file on the client, the same key that you use on the servers `authorized_keys` file. You can use option 7 of the script to extract all the public keys to their own files.
+Then you can use option 8 of the script to populate the `.ssh/config` based on those files (only really works if you put the host name in the name of the keys when generating them. Otherwise you will just need to do it manually).
 
 update the clients `~/.ssh/config` with the following:
 
